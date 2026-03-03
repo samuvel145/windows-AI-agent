@@ -11,24 +11,59 @@ _context: BrowserContext = None
 _page: Page = None
 
 async def _init_browser():
-    """Initializes the browser session if not already active."""
+    """Initializes the browser, prioritizing the system Chrome profile for access to logged-in accounts."""
     global _playwright, _browser, _context, _page
     if _page is None:
+        from amdea.logging_config import get_logger
+        logger = get_logger("Browser")
         try:
-            from amdea.logging_config import get_logger
-            logger = get_logger("Browser")
             logger.info("Starting Playwright/Chromium...")
             _playwright = await async_playwright().start()
-            user_data_dir = Path.home() / ".amdea" / "browser_data"
-            user_data_dir.mkdir(parents=True, exist_ok=True)
             
-            _context = await _playwright.chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                headless=False,
-                viewport={'width': 1280, 'height': 720},
-                accept_downloads=True,
-                timeout=30000
-            )
+            # Default AMDEA profile as fallback
+            amdea_data_dir = Path.home() / ".amdea" / "browser_data"
+            
+            # System Chrome profile detection (Windows)
+            import platform
+            import os
+            
+            launch_args = {
+                "channel": "chrome", # Use the real Google Chrome instead of bundled Chromium
+                "headless": False,
+                "viewport": {'width': 1280, 'height': 720},
+                "accept_downloads": True,
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                "timeout": 30000
+            }
+
+            if platform.system() == "Windows":
+                chrome_data = Path(os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data"))
+                if chrome_data.exists():
+                    try:
+                        logger.info(f"Attempting to attach to your real Google Chrome profile...")
+                        _context = await _playwright.chromium.launch_persistent_context(
+                            user_data_dir=str(chrome_data),
+                            **launch_args
+                        )
+                        logger.info("Successfully loaded your Google Chrome profile.")
+                    except Exception as e:
+                        logger.warning(f"Could not use main profile (likely because Chrome is already open). Falling back to isolated AMDEA profile.")
+                        # If the main profile is locked, we MUST use the fallback dir
+                        _context = await _playwright.chromium.launch_persistent_context(
+                            user_data_dir=str(amdea_data_dir),
+                            **launch_args
+                        )
+                else:
+                    _context = await _playwright.chromium.launch_persistent_context(
+                        user_data_dir=str(amdea_data_dir),
+                        **launch_args
+                    )
+            else:
+                _context = await _playwright.chromium.launch_persistent_context(
+                    user_data_dir=str(amdea_data_dir),
+                    **launch_args
+                )
+
             _page = _context.pages[0] if _context.pages else await _context.new_page()
             logger.info("Browser session initialized.")
         except Exception as e:
