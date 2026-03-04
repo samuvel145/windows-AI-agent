@@ -28,11 +28,15 @@ class SystemTray:
         self.icons = {state: create_state_icon(color) for state, color in STATE_COLORS.items()}
 
     def set_state(self, state: str) -> None:
-        """Updates the tray icon image to match state."""
+        """Updates the tray icon image to match state. Wraps in try-except to avoid WinError crashes."""
         if state in self.icons and self.icon:
-            self._state = state
-            self.icon.icon = self.icons[state]
-            self.icon.title = f"AMDEA — {state}"
+            try:
+                self._state = state
+                self.icon.icon = self.icons[state]
+                self.icon.title = f"AMDEA — {state}"
+            except Exception:
+                # Silently catch pystray/Win32 cursor errors during shutdown/rapid updates
+                pass
 
     def _build_menu(self) -> pystray.Menu:
         return pystray.Menu(
