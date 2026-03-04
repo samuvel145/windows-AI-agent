@@ -1,2 +1,0 @@
-2026-03-04 11:05:02,921 | INFO     | Controller                     | Executing Step 1: open_app {'app': 'VideoPlayer'}
-2026-03-04 11:33:51,107 | INFO     | Controller                     | Executing Step 1: open_app {'app': 'WhatsApp'}
