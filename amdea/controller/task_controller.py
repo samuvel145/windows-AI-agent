@@ -241,6 +241,21 @@ class TaskController:
                 await self.tts.speak(f"Found it: {pathlib.Path(found).name}")
             else:
                 raise FileNotFoundError(f"Could not find any file matching '{params['query']}'")
+        elif action == "media_play_pause":
+            app_control.media_control("play_pause")
+        elif action == "media_next":
+            app_control.media_control("next")
+        elif action == "media_prev":
+            app_control.media_control("prev")
+        elif action == "media_mute":
+            app_control.media_control("mute")
+        elif action == "set_volume":
+            # set_volume might need specific logic, but often media_up/down is enough
+            # For now, just a placeholder or simple logic
+            level = params.get("level", "up")
+            if level == "up": app_control.media_control("volume_up")
+            elif level == "down": app_control.media_control("volume_down")
+            elif level == "mute": app_control.media_control("mute")
         elif action == "respond_only":
             pass
         elif action == "clarify":

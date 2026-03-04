@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import psutil
 import platform
+import keyboard
 from pathlib import Path
 
 APP_NAME_MAP = {
@@ -30,6 +31,19 @@ APP_NAME_MAP = {
         "windows": "spotify.exe",
         "darwin": "Spotify",
         "linux": "spotify"
+    },
+    "vlc": {
+        "windows": "vlc.exe",
+        "darwin": "VLC",
+        "linux": "vlc"
+    },
+    "videoplayer": {
+        "windows": "Video.UI.exe",
+        "darwin": "QuickTime Player",
+        "linux": "vlc"
+    },
+    "moviesandtv": {
+        "windows": "Video.UI.exe"
     },
     "fileexplorer": {
         "windows": "explorer.exe",
@@ -82,26 +96,44 @@ def _find_app_path_powershell(app_name: str) -> str | None:
         return None
     return None
 
+# Global alias map to unify app recognition
+ALIAS_MAP = {
+    "filemanagement": "fileexplorer",
+    "wordpack": "wordpad",
+    "explorer": "fileexplorer",
+    "calc": "calculator",
+    "vsc": "vscode",
+    "code": "vscode",
+    "msword": "word",
+    "microsoftword": "word",
+    "videoplayer": "videoplayer",
+    "moviesandtv": "videoplayer",
+    "movieplayer": "videoplayer"
+}
+
+def _get_process_targets(app_name: str) -> list[str]:
+    """Resolves an app name to a list of potential process names."""
+    os_name = platform.system().lower()
+    norm_name = app_name.lower().replace(" ", "").replace("-", "")
+    norm_name = ALIAS_MAP.get(norm_name, norm_name)
+    
+    targets = [app_name.lower(), norm_name]
+    if norm_name in APP_NAME_MAP:
+        executable = APP_NAME_MAP[norm_name].get(os_name) or APP_NAME_MAP[norm_name].get("linux")
+        if executable:
+            targets.append(executable.lower())
+    return list(set(targets))
+
 def open_app(app_name: str, args: list[str] = []) -> bool:
     """Launches an application by name or common alias."""
     os_name = platform.system().lower()
     norm_name = app_name.lower().replace(" ", "").replace("-", "")
+    norm_name = ALIAS_MAP.get(norm_name, norm_name)
     
-    # Common user-phrased aliases
-    alias_map = {
-        "filemanagement": "fileexplorer",
-        "wordpack": "wordpad",
-        "wordpad": "wordpad",
-        "word": "word",
-        "msword": "word",
-        "microsoftword": "word",
-        "explorer": "fileexplorer",
-        "calc": "calculator",
-        "vsc": "vscode",
-        "code": "vscode"
-    }
-    norm_name = alias_map.get(norm_name, norm_name)
-    
+    # Check if app is already running to prevent duplicates (e.g. "Two Words")
+    if is_app_running(app_name):
+        return True
+
     executable = None
     if norm_name in APP_NAME_MAP:
         executable = APP_NAME_MAP[norm_name].get(os_name) or APP_NAME_MAP[norm_name].get("linux")
@@ -118,6 +150,7 @@ def open_app(app_name: str, args: list[str] = []) -> bool:
                     r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
                     r"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE",
                     r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
+                    r"C:\Program Files (x86)\Microsoft Office\root\Office16\EXCEL.EXE",
                     r"C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE"
                 ]
                 for cp in common_paths:
@@ -153,11 +186,13 @@ def open_app(app_name: str, args: list[str] = []) -> bool:
     raise AppNotFoundError(f"Could not find application: {app_name}. If it's a browser site, ask me to 'open chrome' first.")
 
 def close_app(app_name: str, force: bool = False) -> bool:
-    """Closes an application by process name."""
+    """Closes an application by process name or common alias."""
+    targets = _get_process_targets(app_name)
     found = False
     for proc in psutil.process_iter(['name', 'pid']):
         try:
-            if app_name.lower() in proc.info['name'].lower():
+            proc_name = proc.info['name'].lower()
+            if any(t in proc_name for t in targets):
                 if force:
                     proc.kill()
                 else:
@@ -169,9 +204,11 @@ def close_app(app_name: str, force: bool = False) -> bool:
 
 def is_app_running(app_name: str) -> bool:
     """Checks if an application is currently running."""
+    targets = _get_process_targets(app_name)
     for proc in psutil.process_iter(['name']):
         try:
-            if app_name.lower() in proc.info['name'].lower():
+            proc_name = proc.info['name'].lower()
+            if any(t in proc_name for t in targets):
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
@@ -216,3 +253,19 @@ def open_file(file_path: str) -> bool:
     # On Windows use 'start' to open with default app
     subprocess.Popen(['cmd', '/c', 'start', '', str(path)], start_new_session=True)
     return True
+
+def media_control(command: str) -> None:
+    """Sends media control keys."""
+    # Map command to keyboard keys
+    key_map = {
+        "play_pause": "play/pause media",
+        "next": "next track",
+        "prev": "previous track",
+        "stop": "stop media",
+        "volume_up": "volume up",
+        "volume_down": "volume down",
+        "mute": "volume mute"
+    }
+    key = key_map.get(command)
+    if key:
+        keyboard.send(key)

@@ -1,0 +1,8 @@
+2785: 2026-03-04 11:33:34,472 | WARNING  | AMDEA                          | STT timed out
+2786: 2026-03-04 11:33:49,981 | INFO     | AMDEA                          | User: Open WhatsApp. Search chat. [en]
+2787: 2026-03-04 11:33:51,092 | INFO     | AMDEA                          | Generated Plan: Open WhatsApp and search for a chat
+2788: 2026-03-04 11:33:51,099 | INFO     | Controller                     | Registering task ac45e111-d404-4ffd-bf24-c89df75aa9d1 in database...
+2789: 2026-03-04 11:33:51,107 | INFO     | Controller                     | Executing Step 1: open_app {'app': 'WhatsApp'}
+2790: 2026-03-04 11:33:52,442 | INFO     | Controller                     | Executing Step 2: wait {'seconds': 5}
+2791: 2026-03-04 11:33:57,466 | INFO     | Controller                     | Executing Step 3: key_press {'keys': 'Ctrl+F'}
+2792: 2026-03-04 11:33:57,584 | INFO     | Controller                     | Executing Step 4: clarify {'question': 'Who would you like to search for?'}
