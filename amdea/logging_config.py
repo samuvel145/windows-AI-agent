@@ -33,14 +33,12 @@ def setup_logging():
     file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)
     file_handler.setFormatter(logging.Formatter(log_format, style="{"))
     
-    stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(logging.Formatter(log_format, style="{"))
+    import io
     # Force UTF-8 for console output to avoid cp1252 encoding errors on Windows
-    if hasattr(sys.stdout, 'reconfigure'):
-        try:
-            sys.stdout.reconfigure(encoding='utf-8')
-        except:
-            pass
+    # StreamHandler with a custom wrapper is more robust than sys.stdout.reconfigure
+    fh_stream = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)
+    stream_handler = logging.StreamHandler(fh_stream)
+    stream_handler.setFormatter(logging.Formatter(log_format, style="{"))
 
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
