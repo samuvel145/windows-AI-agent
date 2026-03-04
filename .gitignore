@@ -46,3 +46,4 @@ ENV/
 temp/
 screenshots/
 recording/
+.pytest_cache/
